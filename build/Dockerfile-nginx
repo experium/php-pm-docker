@@ -35,3 +35,5 @@ WORKDIR /var/www
 
 ADD run-nginx.sh /etc/app/run.sh
 ENTRYPOINT ["/bin/bash", "/etc/app/run.sh"]
+
+RUN apk --no-cache add grep
