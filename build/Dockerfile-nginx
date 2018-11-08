@@ -1,29 +1,40 @@
 FROM composer/composer:1.1 as composer
 
-ARG version=dev-master
-ARG http_version=dev-master
+ARG version=^1.0.5
+ARG http_version=^1.0.5
 RUN mkdir /ppm && cd /ppm && composer require php-pm/php-pm:${version} && composer require php-pm/httpkernel-adapter:${http_version}
 
-FROM alpine:3.7
+FROM chialab/php:7.2
 
-ENV LC_ALL en_US.UTF-8
-ENV LANG en_US.UTF-8
+RUN docker-php-ext-install pcntl
 
-RUN apk --no-cache add tzdata && \
-    cp /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
-    echo "UTC" | tee /etc/timezone && \
-    apk del tzdata
+# Fonts
+RUN echo "deb http://deb.debian.org/debian stretch contrib non-free" >> /etc/apt/sources.list \
+    && echo "deb http://deb.debian.org/debian stretch-updates contrib non-free" >> /etc/apt/sources.list \
+    && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
 
-RUN apk --no-cache add \
-    php7 php7-opcache php7-fpm php7-cgi php7-ctype php7-json php7-dom php7-zip php7-zip php7-gd \
-    php7-curl php7-mbstring php7-redis php7-mcrypt php7-iconv php7-posix php7-pdo_mysql php7-tokenizer php7-simplexml php7-session \
-    php7-xml php7-sockets php7-openssl php7-fileinfo php7-ldap php7-exif php7-pcntl php7-xmlwriter php7-phar php7-zlib \
-    php7-intl
+RUN apt-get clean all
+RUN apt-get update
+RUN apt-get -y dist-upgrade
+
+RUN apt-get install -y wget xfonts-base xfonts-75dpi fontconfig libfontconfig libxrender-dev libxext-dev ghostscript ttf-mscorefonts-installer
+
+# Tahoma font
+RUN wget https://alderson.eu.org/sites/fonts/IELPKTH.CAB
+RUN cabextract -F 'tahoma*ttf' IELPKTH.CAB
+RUN mv -f tahoma*ttf /usr/share/fonts/truetype/msttcorefonts/
+RUN chmod 644 /usr/share/fonts/truetype/msttcorefonts/tahoma*
+RUN fc-cache -v
+RUN rm -f IELPKTH.CAB
+
+# wkhtmltopdf
+RUN wget https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.5-1.stretch_amd64.deb
+RUN dpkg -i wkhtmltox_0.12.5-1.stretch_amd64.deb
+
 ADD etc/php.ini /etc/php7/php.ini
 
-RUN apk --no-cache add bash
-
-RUN apk --no-cache add nginx
+# Nginx
+RUN apt-get install -y nginx
 ADD etc/nginx_default.conf /etc/nginx/sites-enabled/default
 ADD etc/nginx.conf /etc/nginx/nginx.conf
 
